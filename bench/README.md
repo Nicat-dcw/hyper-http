@@ -34,4 +34,4 @@ Both frameworks are tested with:
 
 ### Interpreting Results
 
-Ratios greater than 1.0 indicate HyperHttp is performing better, while ratios less than 1.0 indicate Hono is performing better in that metric.
+Ratios greater than 1.0x and 1.7x indicate HyperHttp is performing better, while ratios less than 1.0 indicate Hono is performing better in that metric.

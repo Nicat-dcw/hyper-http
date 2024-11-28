@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { Router } from './router.ts';
+import { Router } from './router';
 import { Context, Handler, Middleware } from './types.ts';
 
 export class App {
@@ -43,7 +43,7 @@ export class App {
       }
 
       try {
-        // Use a more memory-efficient approach for body parsing
+
         const bodyBuffer = await new Promise<Buffer>((resolve, reject) => {
           const chunks: Buffer[] = [];
           req.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
@@ -57,13 +57,13 @@ export class App {
           method: req.method,
           headers: new Headers(req.headers as Record<string, string>),
           body: bodyText || null,
-          duplex: 'half'
+          
         });
 
         const response = await this.router.handle(request);
         const responseBody = await response.text();
 
-        // Optimize header setting
+
         const headers = Object.fromEntries(response.headers);
         res.writeHead(response.status, headers);
         res.end(responseBody);

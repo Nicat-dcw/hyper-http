@@ -1,6 +1,6 @@
 import FindMyWay, { HTTPMethod } from 'find-my-way';
 import { Context, Handler } from './types';
-
+import { IncomingMessage } from 'node:http'
 export class Router {
   private router = FindMyWay({
     defaultRoute: (req, res) => {
@@ -10,13 +10,19 @@ export class Router {
   });
 
   private wrapHandler(handler: Handler) {
-    return async (req: Request, res: any, params: any) => {
-      const ctx = new Context(req, res);
-      ctx.params = params;
 
-      const response = await handler(ctx);
-      return response; // Return the response instead of directly writing to res
-    };
+  return async (req: IncomingMessage, res: any, params: any) => {
+    const request = new Request(`http://${req.headers.host}${req.url}`, {
+      method: req.method,
+      headers: req.headers as HeadersInit,
+    });
+    const ctx = new Context(request, res);
+    ctx.params = params;
+
+    const response = await handler(ctx);
+    return response;
+  };
+
   }
 
   add(method: HTTPMethod, path: string, handler: Handler) {
@@ -39,22 +45,23 @@ export class Router {
     this.add('DELETE', path, handler);
   }
 
-  // Modify handle method to return a Response
+
   async handle(req: Request): Promise<Response> {
     try {
       const result = this.router.find(req.method as HTTPMethod, req.url);
-      if (result) {
-        return await result.handler(req, null, result.params);
-      }
+if (result) {
+  // @ts-ignore
+  return await result.handler(req, null, result.params, null, null);
+}
       
-      // Default 404 response if no route found
+
       return new Response('Not Found', { 
         status: 404,
         headers: { 'Content-Type': 'text/plain' }
       });
     } catch (error) {
-      // Error handling
-      console.error('Router handle error:', error);
+   
+      console.error(error)
       return new Response('Internal Server Error', { 
         status: 500,
         headers: { 'Content-Type': 'text/plain' }

@@ -1,4 +1,4 @@
-import { Context } from './context.ts';
+import { Context } from './context';
 
 export type Handler<T = unknown> = (c: Context) => Promise<Response> | Response;
 export type Middleware = (c: Context, next: () => Promise<Response>) => Promise<Response>;

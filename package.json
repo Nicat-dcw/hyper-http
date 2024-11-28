@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsup ./src/",
     "start": "node dist/index.js",
     "bench": "tsx bench/index.ts",
     "bench:compare": "tsx bench/compare.ts"
@@ -18,7 +18,10 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "express": "^4.21.1",
+    "fastify": "^5.1.0",
     "find-my-way": "^9.1.0",
-    "hono": "^3.11.7"
+    "hono": "^3.11.7",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.49.0"
   }
 }

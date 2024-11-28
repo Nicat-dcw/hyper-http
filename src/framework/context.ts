@@ -13,20 +13,37 @@ export class Context {
   }
 
   async parseBody() {
-    if (!this._body) {
+    if (this._body !== undefined) return this._body;
+
+    try {
       const contentType = this.request.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        this._body = await this.request.json();
-      } else if (contentType?.includes('text')) {
-        this._body = await this.request.text();
-      } else {
-        this._body = await this.request.text();
+      const bodyText = await this.request.text();
+
+      // Check if body is empty
+      if (!bodyText) {
+        this._body = null;
+        return null;
       }
+
+      // Try parsing JSON if content type is JSON
+      if (contentType?.includes('application/json')) {
+        try {
+          this._body = JSON.parse(bodyText);
+        } catch (jsonError) {
+          console.error('JSON parsing error:', jsonError);
+          this._body = bodyText;
+        }
+      } else {
+        this._body = bodyText;
+      }
+    } catch (error) {
+      console.error('Error parsing body:', error);
+      this._body = null;
     }
+
     return this._body;
   }
 
-  // Response helpers
   json(data: unknown, status = 200) {
     return new Response(JSON.stringify(data), {
       status,
@@ -55,12 +72,11 @@ export class Context {
     });
   }
 
-  // Request body getters
   get body() {
     return this._body;
   }
 
-  get data(): any {
+  get data() {
     return this._body;
   }
 }

@@ -1,4 +1,4 @@
-import { Context } from '../framework/types.ts';
+import { Context } from '../framework/types';
 
 interface CorsOptions {
   origin?: string | string[];
