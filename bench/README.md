@@ -21,11 +21,13 @@ The comparison benchmark tests three endpoints:
 3. POST /data - JSON body handling
 
 Metrics measured:
+
 - Requests per second
 - Average latency
 - Throughput
 
 Both frameworks are tested with:
+
 - 100 concurrent connections
 - 10 pipelining factor
 - 10 second duration

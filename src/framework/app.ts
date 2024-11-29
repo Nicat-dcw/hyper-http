@@ -1,10 +1,10 @@
-import { createServer } from 'node:http';
-import { Router } from './router';
-import { Context, Handler, Middleware } from './types.ts';
+import { createServer } from "node:http";
+import { Router } from "./router";
+import { Context, Handler, Middleware } from "./types.ts";
 
 export class App {
   private router: Router;
-
+  private middlewares: Middleware[] = [];
   constructor() {
     this.router = new Router();
   }
@@ -29,52 +29,121 @@ export class App {
     return this;
   }
 
-  use(middleware: Middleware) {
-    // Implement middleware support if needed
+  use(middlewareOrPath: Middleware | string, middleware?: Middleware) {
+    if (typeof middlewareOrPath === "string" && middleware) {
+
+      const path = middlewareOrPath;
+      const pathMiddleware: Middleware = async (ctx, next) => {
+
+        if (ctx.url.pathname.startsWith(path)) {
+          return middleware(ctx, next);
+        }
+        return next();
+      };
+      this.middlewares.push(pathMiddleware);
+    } else if (typeof middlewareOrPath === "function") {
+
+      this.middlewares.push(middlewareOrPath);
+    } else {
+      throw new Error("Invalid middleware configuration");
+    }
     return this;
   }
 
-  listen(port: number, callback?: () => void) {
-    const server = createServer(async (req, res) => {
+  listen(port: number, callback?: () => void): Server {
+    const MAX_BODY_SIZE = 1024 * 1024;
+    const bodyBuffer = Buffer.allocUnsafe(MAX_BODY_SIZE);
+
+    const server = createServer((req, res) => {
       if (!req.url) {
-        res.writeHead(400);
-        res.end('Bad Request');
-        return;
+        res.statusCode = 400;
+        return res.end();
       }
 
-      try {
+      const ctx = new Context(null, null);
+      let bodyLength = 0;
 
-        const bodyBuffer = await new Promise<Buffer>((resolve, reject) => {
-          const chunks: Buffer[] = [];
-          req.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-          req.on('end', () => resolve(Buffer.concat(chunks)));
-          req.on('error', reject);
-        });
-        
-        const bodyText = bodyBuffer.toString('utf8');
+      req.on("data", (chunk) => {
+        const chunkLength = chunk.length;
 
-        const request = new Request(`http://${req.headers.host}${req.url}`, {
-          method: req.method,
-          headers: new Headers(req.headers as Record<string, string>),
-          body: bodyText || null,
-          
-        });
+        if (bodyLength + chunkLength > MAX_BODY_SIZE) {
+          req.destroy();
+          return;
+        }
 
-        const response = await this.router.handle(request);
-        const responseBody = await response.text();
+        chunk.copy(bodyBuffer, bodyLength);
+        bodyLength += chunkLength;
+      });
 
+      req.on("end", async () => {
+        try {
+          const request = new Request(
+            `http://${req.headers.host || "localhost"}${req.url}`,
+            {
+              method: req.method,
+              headers: Object.entries(req.headers).reduce(
+                (headers, [key, value]) => {
+                  if (value)
+                    headers.set(
+                      key,
+                      Array.isArray(value) ? value.join(",") : value,
+                    );
+                  return headers;
+                },
+                new Headers(),
+              ),
+              body:
+                bodyLength > 0
+                  ? bodyBuffer.subarray(0, bodyLength).toString("utf8")
+                  : null,
+            },
+          );
 
-        const headers = Object.fromEntries(response.headers);
-        res.writeHead(response.status, headers);
-        res.end(responseBody);
-      } catch (error) {
-        console.error('Error:', error);
-        res.writeHead(500);
-        res.end('Internal Server Error');
-      }
+          const executeMiddlewares = async (
+            index: number,
+          ): Promise<Response> => {
+            if (!this.middlewares?.length) {
+              return this.router.handle(request);
+            }
+
+            if (index >= this.middlewares.length) {
+              return this.router.handle(request);
+            }
+
+            ctx.request = request;
+            ctx.response = new Response();
+
+            const middleware = this.middlewares[index];
+            const next = () => executeMiddlewares(index + 1);
+
+            return middleware(ctx, next);
+          };
+
+          const response = await executeMiddlewares(0);
+
+          const responseBody = await response.arrayBuffer();
+
+          res.writeHead(response.status, Object.fromEntries(response.headers));
+          res.end(Buffer.from(responseBody));
+        } catch (error) {
+          res.statusCode = 500;
+          res.end();
+          console.error("Request Processing Error:", error);
+        }
+      });
+
+      req.on("error", () => {
+        res.statusCode = 400;
+        res.end();
+      });
     });
 
     server.listen(port, callback);
+
+    server.on("error", (err) => {
+      console.error("Server Startup Error:", err);
+    });
+
     return server;
   }
 }

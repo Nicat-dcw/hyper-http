@@ -1,42 +1,50 @@
-import { Hyper as App, HyperContext } from './index.ts';
-import { logger } from './middleware/logger.ts';
-import { cors } from './middleware/cors.ts';
+import { Hyper as App, HyperContext } from "./index.ts";
+import { logger } from "./middleware/logger.ts";
+import { cors } from "./middleware/cors.ts";
 
 const app = new App();
+console.log(App);
 
-// Middleware
-app.use(logger());
-app.use(cors());
 
+app.use(async (ctx, next) => {
+  console.log(`Request: ${ctx.request.method} ${ctx.url.pathname}`);
+  const startTime = Date.now();
+  const response = await next();
+  console.log(`Response time: ${Date.now() - startTime}ms`);
+  return response;
+});
+app.use(cors())
 // Routes
-app.get('/', (c:HyperContext) => {
+app.get("/", (c: HyperContext) => {
+  logger("error", "Fix it", c, () => {});
   return c.json({
-    message: 'Welcome to Hyper HTTP',
-    version: '1.0.0'
+    message: "Welcome to Hyper HTTP",
+    version: "1.0.0",
   });
 });
 
-app.get('/users/:id', (c:any) => {
+app.get("/users/:id", (c: any) => {
   return c.json({
     userId: c.params.id,
-    query: c.query
+    query: c.query,
   });
 });
 
-app.post('/api/data', async (c:any) => {
+app.post("/api/data", async (c: any) => {
   return c.json({
     received: c.body,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
-app.get('/html', (c:any) => {
-  return c.html('<h1>Hello World!</h1>');
+app.get("/html", (c: any) => {
+  return c.html("<h1>Hello World!</h1>");
 });
 
-app.post('/redirect', (c:HyperContext) => {
-  console.log(c.body)
-  return c.redirect('/');
+app.post("/redirect", async (c: HyperContext) => {
+  const d = await c.data();
+  console.log(c);
+  return c.redirect("/");
 });
 
 const port = 3000;

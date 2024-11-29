@@ -1,10 +1,10 @@
 {
-  "name": "hyper-http",
+  "name": "@hyper/server",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/test.ts",
     "build": "tsup ./src/",
     "start": "node dist/index.js",
     "bench": "tsx bench/index.ts",
